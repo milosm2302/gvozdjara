@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+pipenv/
+Pipfile.lock
+
+# Django
+*.sqlite3
+media/
+
+# Node
+node_modules/
+dist/
+
+# Env files
+.env

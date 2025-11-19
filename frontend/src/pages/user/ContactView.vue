@@ -1,0 +1,241 @@
+<script setup>
+import { ref } from 'vue'
+import TheHeader from '@/components/TheHeader.vue'
+import TheFooter from '@/components/TheFooter.vue'
+
+const contactInfo = {
+  name: 'Beta Pack d.o.o.',
+  address: 'Pukovnika Milenka Pavlovića 159 A',
+  city: 'Zemun-Batajnica',
+  phone1: '065/330 02 42',
+  phone2: '063/8757 725',
+  email: 'office@betapack.co.rs',
+  coordinates: { lat: 44.913252, lng: 20.2595729 }
+}
+
+const form = ref({
+  name: '',
+  email: '',
+  phone: '',
+  message: ''
+})
+
+const sending = ref(false)
+const successMessage = ref('')
+const errorMessage = ref('')
+
+const sendMessage = () => {
+  sending.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  // Simulacija slanja (kasnije možeš dodati API call)
+  setTimeout(() => {
+    successMessage.value = 'Poruka uspešno poslata! Kontaktiraćemo vas uskoro.'
+    form.value = { name: '', email: '', phone: '', message: '' }
+    sending.value = false
+  }, 1000)
+}
+</script>
+
+<template>
+  <div class="min-h-screen flex flex-col bg-gray-50">
+    <TheHeader />
+
+    <main class="flex-1 py-12">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <!-- Page Header -->
+        <div class="text-center mb-12">
+          <h1 class="text-4xl font-bold text-gray-900 mb-4">Kontaktirajte nas</h1>
+          <p class="text-lg text-gray-600">
+            Imamo pitanje ili potrebu za ponudom? Slobodno nas kontaktirajte!
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+
+          <!-- Kontakt Forma -->
+          <div class="bg-white rounded-xl shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Pošaljite poruku</h2>
+
+            <form @submit.prevent="sendMessage" class="space-y-5">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Ime i prezime *
+                </label>
+                <input
+                  v-model="form.name"
+                  required
+                  type="text"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1976d2] focus:border-transparent"
+                  placeholder="Vaše ime"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  v-model="form.email"
+                  type="email"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1976d2] focus:border-transparent"
+                  placeholder="vas.email@primer.com"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Telefon *
+                </label>
+                <input
+                  v-model="form.phone"
+                  required
+                  type="tel"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1976d2] focus:border-transparent"
+                  placeholder="060/123-4567"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Poruka *
+                </label>
+                <textarea
+                  v-model="form.message"
+                  required
+                  rows="5"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1976d2] focus:border-transparent resize-none"
+                  placeholder="Opišite vašu potrebu ili postavite pitanje..."
+                ></textarea>
+              </div>
+
+              <div v-if="successMessage" class="bg-green-100 text-green-800 px-4 py-3 rounded-lg">
+                {{ successMessage }}
+              </div>
+
+              <div v-if="errorMessage" class="bg-red-100 text-red-800 px-4 py-3 rounded-lg">
+                {{ errorMessage }}
+              </div>
+
+              <button
+                type="submit"
+                :disabled="sending"
+                class="w-full bg-gradient-to-r from-#1976d2 to-#1565c0 hover:from-#1565c0 hover:to-[#1565c0] text-white font-semibold py-3 px-6 rounded-lg transition disabled:opacity-50"
+              >
+                {{ sending ? 'Slanje...' : 'Pošalji poruku' }}
+              </button>
+            </form>
+          </div>
+
+          <!-- Kontakt Informacije -->
+          <div class="space-y-6">
+
+            <!-- Info kartice -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Kontakt informacije</h2>
+
+              <div class="space-y-6">
+                <!-- Telefoni -->
+                <div class="flex items-start gap-4">
+                  <div class="bg-blue-100 p-3 rounded-lg">
+                    <span class="text-2xl">📞</span>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="font-semibold text-gray-900 mb-2">Pozovite nas</h3>
+                    <a
+                      :href="`tel:${contactInfo.phone1.replace(/\//g, '')}`"
+                      class="block text-[#1565c0] hover:text-[#1565c0] font-semibold text-lg mb-1 hover:underline"
+                    >
+                      {{ contactInfo.phone1 }}
+                    </a>
+                    <a
+                      :href="`tel:${contactInfo.phone2.replace(/\//g, '')}`"
+                      class="block text-[#1565c0] hover:text-[#1565c0] font-semibold text-lg hover:underline"
+                    >
+                      {{ contactInfo.phone2 }}
+                    </a>
+                  </div>
+                </div>
+
+                <!-- Email -->
+                <div class="flex items-start gap-4">
+                  <div class="bg-blue-100 p-3 rounded-lg">
+                    <span class="text-2xl">✉️</span>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="font-semibold text-gray-900 mb-2">Email</h3>
+                    <a
+                      :href="`mailto:${contactInfo.email}`"
+                      class="text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      {{ contactInfo.email }}
+                    </a>
+                  </div>
+                </div>
+
+                <!-- Adresa -->
+                <div class="flex items-start gap-4">
+                  <div class="bg-green-100 p-3 rounded-lg">
+                    <span class="text-2xl">📍</span>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="font-semibold text-gray-900 mb-2">Adresa</h3>
+                    <p class="text-gray-700">{{ contactInfo.address }}</p>
+                    <p class="text-gray-700">{{ contactInfo.city }}</p>
+                    <a
+                      :href="`https://www.google.com/maps?q=${contactInfo.coordinates.lat},${contactInfo.coordinates.lng}`"
+                      target="_blank"
+                      class="inline-block mt-3 text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      Prikaži na mapi →
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Radno vreme -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Radno vreme</h2>
+
+              <div class="space-y-3">
+                <div class="flex justify-between items-center py-2 border-b">
+                  <span class="text-gray-700">Ponedeljak - Petak</span>
+                  <span class="font-semibold text-gray-900">08:00 - 17:00</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b">
+                  <span class="text-gray-700">Subota</span>
+                  <span class="font-semibold text-gray-900">08:00 - 14:00</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                  <span class="text-gray-700">Nedelja</span>
+                  <span class="font-semibold text-red-600">Zatvoreno</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Google Maps -->
+        <div class="mt-12 bg-white rounded-xl shadow-lg overflow-hidden">
+          <iframe
+            :src="`https://www.google.com/maps?q=${contactInfo.coordinates.lat},${contactInfo.coordinates.lng}&output=embed`"
+            width="100%"
+            height="450"
+            style="border:0;"
+            allowfullscreen=""
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          ></iframe>
+        </div>
+
+      </div>
+    </main>
+
+    <TheFooter />
+  </div>
+</template>

@@ -3,6 +3,11 @@ import Login from "../admin/pages/Login.vue";
 import AdminView from "../admin/pages/AdminView.vue";
 import ShopView from "@/pages/user/ShopView.vue";
 import CartView from "@/pages/user/CartView.vue";
+import ProductDetailView from "@/pages/user/ProductDetailView.vue";
+import CheckoutView from "@/pages/user/CheckoutView.vue";
+import OrderSuccessView from "@/pages/user/OrderSuccessView.vue";
+import ContactView from "@/pages/user/ContactView.vue";
+import AboutView from "@/pages/user/AboutView.vue";
 import { useAuthStore } from "@/store/auth";
 
 const router = createRouter({
@@ -13,9 +18,34 @@ const router = createRouter({
             component: ShopView
         },
         {
+            path: '/proizvod/:id',
+            name: 'product-detail',
+            component: ProductDetailView
+        },
+        {
             path: '/cart',
-
+            name: 'cart',
             component: CartView
+        },
+        {
+            path: '/checkout',
+            name: 'checkout',
+            component: CheckoutView
+        },
+        {
+            path: '/order-success/:orderId',
+            name: 'order-success',
+            component: OrderSuccessView
+        },
+        {
+            path: '/kontakt',
+            name: 'contact',
+            component: ContactView
+        },
+        {
+            path: '/o-nama',
+            name: 'about',
+            component: AboutView
         },
         {
             path: '/admin',
@@ -23,17 +53,24 @@ const router = createRouter({
         },
         {
             path: '/admin/login',
+            name: 'admin-login',
             component: Login
-
         },
         {
             path: '/admin/panel',
+            name: 'admin-panel',
             component: AdminView,
             meta: { requiresAuth: true }
         }
     ],
     history: createWebHistory(import.meta.env.BASE_URL),
-
+    scrollBehavior(to, from, savedPosition) {
+        if (savedPosition) {
+            return savedPosition
+        } else {
+            return { top: 0 }
+        }
+    }
 })
 
 router.beforeEach((to, from, next) => {

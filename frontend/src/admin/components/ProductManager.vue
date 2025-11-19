@@ -3,12 +3,17 @@ import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '@/admin/store/products'
 import { useCategoryStore } from '@/admin/store/categories'
 import { useSubcategoryStore } from '@/admin/store/subcategories'
+import ProductDetailModal from './ProductDetailModal.vue'
 
 const emit = defineEmits(['update-count'])
 
 const productStore = useProductStore()
 const categoryStore = useCategoryStore()
 const subcategoryStore = useSubcategoryStore()
+
+// Detail modal
+const showDetailModal = ref(false)
+const selectedProduct = ref(null)
 
 // UI
 const showModal = ref(false)
@@ -140,6 +145,22 @@ const deleteProduct = async product => {
   emit('update-count')
 }
 
+// Detail modal functions
+const openDetailModal = (product) => {
+  selectedProduct.value = product
+  showDetailModal.value = true
+}
+
+const closeDetailModal = () => {
+  showDetailModal.value = false
+  selectedProduct.value = null
+}
+
+const handleDetailUpdate = async () => {
+  await productStore.fetch()
+  emit('update-count')
+}
+
 // On load
 onMounted(async () => {
   loading.value = true
@@ -211,15 +232,22 @@ onMounted(async () => {
 
         <div class="flex gap-2 mt-5">
           <button
+            @click="openDetailModal(product)"
+            class="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md text-sm"
+          >
+            Varijante/Slike
+          </button>
+
+          <button
             @click="openEditModal(product)"
-            class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md"
+            class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm"
           >
             Izmeni
           </button>
 
           <button
             @click="deleteProduct(product)"
-            class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md"
+            class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm"
           >
             Obriši
           </button>
@@ -327,5 +355,13 @@ onMounted(async () => {
 
       </div>
     </div>
+
+    <!-- Detail Modal za varijante/slike -->
+    <ProductDetailModal
+      :show="showDetailModal"
+      :product="selectedProduct"
+      @close="closeDetailModal"
+      @updated="handleDetailUpdate"
+    />
   </div>
 </template>

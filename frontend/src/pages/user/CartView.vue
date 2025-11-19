@@ -1,168 +1,214 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-
-import ShopHeader from '../../components/ShopHeader.vue'
-import { useCartStore } from '../../store/cart'
-import { useFilters } from '../../composables/useFilters'
+import TheHeader from '@/components/TheHeader.vue'
+import TheFooter from '@/components/TheFooter.vue'
+import { useCartStore } from '@/store/cart'
 
 const router = useRouter()
 const cartStore = useCartStore()
-const { formatPrice } = useFilters()
 
-// Derived values
-const cart = computed(() => cartStore.items)
-const cartCount = computed(() => cartStore.count)
-const subtotal = computed(() => cartStore.subtotal)
-const shipping = computed(() => cartStore.shipping)
-const total = computed(() => cartStore.total)
-const totalItems = computed(() => cartStore.count)
+const formatPrice = (price) => {
+  return new Intl.NumberFormat('sr-RS', {
+    style: 'currency',
+    currency: 'RSD',
+    minimumFractionDigits: 0
+  }).format(price)
+}
 
-const increaseQuantity = (item) => cartStore.increase(item)
-const decreaseQuantity = (item) => cartStore.decrease(item)
-const removeFromCart = (item) => {
-  if (confirm(`Da li želite da uklonite "${item.name}" iz korpe?`)) {
-    cartStore.remove(item)
+const cartItems = computed(() => cartStore.items)
+const cartTotal = computed(() => cartStore.total)
+const cartCount = computed(() => cartStore.itemCount)
+
+const updateQuantity = (item, newQuantity) => {
+  if (newQuantity < 1) return
+  cartStore.updateQuantity(item.cartId || item.id, newQuantity)
+}
+
+const removeItem = (item) => {
+  if (confirm(`Ukloniti "${item.name}" iz korpe?`)) {
+    cartStore.remove(item.cartId || item.id)
   }
 }
+
 const clearCart = () => {
-  if (confirm('Da li ste sigurni da želite da ispraznite korpu?')) {
+  if (confirm('Isprazniti korpu?')) {
     cartStore.clear()
   }
 }
 
 const goToCheckout = () => {
-  alert('Checkout stiže uskoro 🚀')
+  router.push('/checkout')
 }
-
-onMounted(() => {
-  cartStore.load()
-})
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <ShopHeader :cart-count="cartCount" @search="() => {}" />
+  <div class="min-h-screen flex flex-col bg-gray-50">
+    <TheHeader />
 
-    <div class="max-w-7xl mx-auto px-5 py-10">
+    <main class="flex-1 py-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <router-link 
-        to="/" 
-        class="inline-flex items-center text-[#3555e4] no-underline font-semibold mb-5 transition-colors hover:text-[#64b5f6]"
-      >
-        ← Nazad na kupovinu
-      </router-link>
-
-      <h1 class="text-4xl font-bold text-gray-800 mb-8">Vaša Korpa</h1>
-
-      <!-- Empty -->
-      <div v-if="cart.length === 0" class="text-center py-20 bg-white rounded-xl">
-        <span class="text-[100px] block mb-5">🛒</span>
-        <h2 class="text-3xl font-bold mb-2.5">Korpa je prazna</h2>
-        <p class="text-gray-600 text-lg mb-8">Dodajte proizvode da biste nastavili</p>
-
-        <router-link 
-          to="/" 
-          class="inline-block px-10 py-4 bg-gradient-to-r from-[#3555e4] to-[#64b5f6] text-white rounded-full font-semibold transition-transform hover:scale-105 no-underline"
+        <!-- Back Button -->
+        <button
+          @click="router.push('/')"
+          class="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition"
         >
-          Pogledaj Proizvode
-        </router-link>
-      </div>
+          <span>←</span>
+          <span>Nazad na prodavnicu</span>
+        </button>
 
-      <!-- Not empty -->
-      <div v-else class="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8">
+        <h1 class="text-4xl font-bold text-gray-900 mb-8">Korpa</h1>
 
-        <!-- Items -->
-        <div class="flex flex-col gap-5">
-          <div 
-            v-for="item in cart" 
-            :key="item.id"
-            class="bg-white rounded-xl p-5 grid grid-cols-[100px_1fr_auto_auto_auto] gap-5 items-center"
+        <!-- Empty Cart -->
+        <div v-if="cartItems.length === 0" class="bg-white rounded-2xl shadow-lg p-12 text-center">
+          <span class="text-8xl text-gray-300 mb-6 block">🛒</span>
+          <h2 class="text-3xl font-bold text-gray-900 mb-4">Vaša korpa je prazna</h2>
+          <p class="text-gray-600 mb-8 text-lg">Dodajte proizvode u korpu da biste nastavili</p>
+          <button
+            @click="router.push('/')"
+            class="bg-[#1976d2] hover:bg-[#1565c0] text-white font-semibold px-8 py-3 rounded-lg transition"
           >
-            <div class="w-[100px] h-[100px] rounded-lg overflow-hidden bg-gray-100">
-              <img 
-                :src="item.image || 'https://via.placeholder.com/100x100?text=Proizvod'"
-                class="w-full h-full object-cover"
-              />
-            </div>
+            Pogledaj proizvode
+          </button>
+        </div>
 
-            <div>
-              <h3 class="text-lg font-semibold text-gray-800 mb-1">{{ item.name }}</h3>
-              <p class="text-[#3555e4] font-semibold">{{ formatPrice(item.price) }}</p>
-            </div>
+        <!-- Cart Items -->
+        <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            <div class="flex items-center gap-2.5 bg-gray-100 rounded-full p-1">
-              <button 
-                @click="decreaseQuantity(item)"
-                :disabled="item.quantity <= 1"
-                class="w-8 h-8 bg-white rounded-full text-[#3555e4] hover:bg-[#3555e4] hover:text-white disabled:opacity-30"
-              >-</button>
-
-              <span class="min-w-[30px] text-center font-semibold">
-                {{ item.quantity }}
-              </span>
-
-              <button 
-                @click="increaseQuantity(item)"
-                class="w-8 h-8 bg-white rounded-full text-[#3555e4] hover:bg-[#3555e4] hover:text-white"
-              >+</button>
-            </div>
-
-            <div class="min-w-[120px] text-right">
-              <p class="text-xl font-bold text-green-700">
-                {{ formatPrice(item.price * item.quantity) }}
-              </p>
-            </div>
-
-            <button 
-              @click="removeFromCart(item)"
-              class="w-10 h-10 bg-red-50 hover:bg-[#e74c3c] rounded-lg text-xl hover:text-white"
+          <!-- Items List -->
+          <div class="lg:col-span-2 space-y-4">
+            <div
+              v-for="item in cartItems"
+              :key="item.id"
+              class="bg-white rounded-xl shadow p-6 flex gap-6"
             >
-              🗑️
+              <!-- Image -->
+              <div class="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                <img
+                  v-if="item.images && item.images.length > 0"
+                  :src="`http://localhost:8000${item.images[0].image}`"
+                  :alt="item.name"
+                  class="w-full h-full object-cover"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
+                  <span class="text-4xl">📦</span>
+                </div>
+              </div>
+
+              <!-- Info -->
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-gray-900 text-lg mb-1">{{ item.name }}</h3>
+                <p class="text-sm text-gray-600 mb-2">{{ item.category_name }}</p>
+                <p v-if="item.selectedVariant" class="text-sm text-[#1565c0] font-semibold">
+                  Dimenzija: {{ item.selectedVariant.name }}
+                </p>
+                <p class="text-lg font-bold text-green-700 mt-2">{{ formatPrice(item.current_price) }}</p>
+              </div>
+
+              <!-- Quantity & Actions -->
+              <div class="flex flex-col items-end justify-between">
+                <!-- Quantity -->
+                <div class="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                  <button
+                    @click="updateQuantity(item, item.quantity - 1)"
+                    :disabled="item.quantity <= 1"
+                    class="w-8 h-8 bg-white rounded hover:bg-[#1976d2] hover:text-white transition disabled:opacity-50"
+                  >
+                    -
+                  </button>
+                  <span class="w-12 text-center font-semibold">{{ item.quantity }}</span>
+                  <button
+                    @click="updateQuantity(item, item.quantity + 1)"
+                    class="w-8 h-8 bg-white rounded hover:bg-[#1976d2] hover:text-white transition"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <!-- Subtotal -->
+                <div class="text-right">
+                  <p class="text-xl font-bold text-gray-900">
+                    {{ formatPrice(item.current_price * item.quantity) }}
+                  </p>
+                </div>
+
+                <!-- Remove -->
+                <button
+                  @click="removeItem(item)"
+                  class="text-red-600 hover:text-red-700 text-sm font-semibold"
+                >
+                  Ukloni
+                </button>
+              </div>
+            </div>
+
+            <!-- Clear Cart -->
+            <button
+              @click="clearCart"
+              class="text-red-600 hover:text-red-700 text-sm font-semibold"
+            >
+              Isprazni korpu
             </button>
           </div>
+
+          <!-- Order Summary -->
+          <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-lg p-6 sticky top-24">
+              <h2 class="text-2xl font-bold text-gray-900 mb-6">Rezime</h2>
+
+              <div class="space-y-3 mb-6">
+                <div class="flex justify-between text-gray-600">
+                  <span>Proizvodi ({{ cartCount }})</span>
+                  <span>{{ formatPrice(cartTotal) }}</span>
+                </div>
+                <div class="flex justify-between text-gray-600">
+                  <span>Dostava</span>
+                  <span class="text-gray-400">Dogovor telefonom</span>
+                </div>
+              </div>
+
+              <div class="border-t pt-4 mb-6">
+                <div class="flex justify-between items-center">
+                  <span class="text-xl font-bold text-gray-900">Ukupno</span>
+                  <span class="text-2xl font-bold text-green-700">{{ formatPrice(cartTotal) }}</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Finalna cena se potvrđuje telefonom</p>
+              </div>
+
+              <button
+                @click="goToCheckout"
+                class="w-full bg-[#1976d2] hover:bg-[#1565c0] text-white font-bold py-4 rounded-lg transition mb-3"
+              >
+                Nastavi ka poručivanju
+              </button>
+
+              <button
+                @click="router.push('/')"
+                class="w-full bg-white hover:bg-gray-50 text-gray-900 font-semibold py-3 rounded-lg border-2 border-gray-300 transition"
+              >
+                Nastavi kupovinu
+              </button>
+
+              <!-- Info -->
+              <div class="mt-6 pt-6 border-t">
+                <h3 class="font-semibold text-gray-900 mb-3 text-sm">Potrebna pomoć?</h3>
+                <a
+                  href="tel:0653300242"
+                  class="flex items-center gap-2 text-[#1565c0] hover:text-[#1565c0]"
+                >
+                  <span>📞</span>
+                  <span class="font-semibold">065/330 02 42</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        <!-- Summary -->
-        <div class="bg-white rounded-xl p-8 h-fit sticky top-[100px]">
-          <h2 class="text-2xl font-bold text-gray-800 mb-5">Rezime narudžbine</h2>
-
-          <div class="flex justify-between text-gray-600 mb-4">
-            <span>Proizvodi ({{ totalItems }})</span>
-            <span>{{ formatPrice(subtotal) }}</span>
-          </div>
-
-          <div class="flex justify-between text-gray-600 mb-4">
-            <span>Dostava</span>
-            <span :class="shipping === 0 ? 'text-green-600 font-semibold' : ''">
-              {{ shipping === 0 ? 'Besplatno' : formatPrice(shipping) }}
-            </span>
-          </div>
-
-         
-
-          <div class="border-t my-5"></div>
-
-          <div class="flex justify-between text-2xl font-bold text-gray-800 mb-5">
-            <span>Ukupno</span>
-            <span>{{ formatPrice(total) }}</span>
-          </div>
-
-          <button 
-            @click="goToCheckout"
-            class="w-full py-4 bg-gradient-to-r from-[#3555e4] to-[#64b5f6] text-white rounded-lg text-lg font-semibold hover:-translate-y-0.5"
-          >
-            Nastavi ka poručivanju
-          </button>
-
-          <button 
-            @click="clearCart"
-            class="w-full py-3 mt-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold text-gray-600"
-          >
-            Isprazni korpu
-          </button>
-        </div>
       </div>
-    </div>
+    </main>
+
+    <TheFooter />
   </div>
 </template>

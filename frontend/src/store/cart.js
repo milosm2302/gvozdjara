@@ -1,31 +1,44 @@
 import { defineStore } from 'pinia'
 
 export const useCartStore = defineStore('cart', {
-    state: () => ({
-        items: JSON.parse(localStorage.getItem('cart') || '[]')
-    }),
+    state: () => {
+        // Load cart from localStorage and validate items
+        const savedCart = JSON.parse(localStorage.getItem('cart') || '[]')
+
+        // Filter out items without current_price (old/invalid data)
+        const validItems = savedCart.filter(item => {
+            return item.current_price !== undefined && item.current_price !== null
+        })
+
+        // If we filtered out items, save the cleaned cart
+        if (validItems.length !== savedCart.length) {
+            localStorage.setItem('cart', JSON.stringify(validItems))
+        }
+
+        return {
+            items: validItems
+        }
+    },
 
     getters: {
-        count: (state) => {
+        itemCount: (state) => {
             return state.items.reduce((sum, i) => sum + i.quantity, 0)
         },
 
-        subtotal: (state) => {
-            return state.items.reduce((sum, i) => sum + (i.price * i.quantity), 0)
-        },
-
-        shipping: (state) => {
-            return state.items.length === 0 ? 0 : state.items.reduce((sum, i) => sum + (i.price * i.quantity), 0) > 5000
-                ? 0
-                : 300
-        },
-
         total: (state) => {
-            return state.subtotal + state.shipping
+            return state.items.reduce((sum, item) => {
+                const price = parseFloat(item.current_price) || 0
+                return sum + (price * item.quantity)
+            }, 0)
         },
 
-        isInCart: (state) => (id) => {
-            return state.items.some(i => i.id === id)
+        isInCart: (state) => (productId, variantId = null) => {
+            if (variantId) {
+                const cartId = `${productId}-${variantId}`
+                return state.items.some(i => i.cartId === cartId)
+            }
+            // If no variant specified, check if ANY variant of this product is in cart
+            return state.items.some(i => i.id === productId)
         }
     },
 
@@ -41,38 +54,41 @@ export const useCartStore = defineStore('cart', {
             }
         },
 
-        add(product) {
-            const found = this.items.find(i => i.id === product.id)
+        add(product, quantity = 1) {
+            const cartId = product.selectedVariant
+                ? `${product.id}-${product.selectedVariant.id}`
+                : product.id
+
+            const found = this.items.find(i => i.cartId === cartId)
 
             if (found) {
-                found.quantity++
+                found.quantity += quantity
             } else {
                 this.items.push({
+                    cartId: cartId,
                     id: product.id,
                     name: product.name,
-                    price: parseFloat(product.current_price),
-                    image: product.image,
-                    quantity: 1
+                    current_price: product.current_price,
+                    images: product.images || [],
+                    category_name: product.category_name,
+                    selectedVariant: product.selectedVariant || null,
+                    quantity: quantity
                 })
             }
 
             this.save()
         },
 
-        increase(item) {
-            item.quantity++
-            this.save()
-        },
-
-        decrease(item) {
-            if (item.quantity > 1) {
-                item.quantity--
+        updateQuantity(itemId, newQuantity) {
+            const item = this.items.find(i => i.cartId === itemId || i.id === itemId)
+            if (item && newQuantity >= 1) {
+                item.quantity = newQuantity
                 this.save()
             }
         },
 
-        remove(item) {
-            this.items = this.items.filter(i => i.id !== item.id)
+        remove(itemId) {
+            this.items = this.items.filter(i => i.cartId !== itemId && i.id !== itemId)
             this.save()
         },
 

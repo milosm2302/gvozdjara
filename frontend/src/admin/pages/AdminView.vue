@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/auth'
 import CategoryManager from '../components/CategoryManager.vue'
 import SubcategoryManager from '../components/SubcategoryManager.vue'
 import ProductManager from '../components/ProductManager.vue'
+import OrdersManager from '../components/OrdersManager.vue'
 
 import { useAdminNav } from '../composables/useAdminNav'
 import { useAdminStatsStore } from '../store/adminStats'
@@ -31,7 +32,7 @@ onMounted(() => {
 
     <!-- Header -->
     <header class="bg-white px-10 py-5 shadow-md flex justify-between items-center sticky top-0 z-[100]">
-      <h1 class="text-2xl font-bold text-gray-800">Gvozdara Shop - Admin Panel</h1>
+      <h1 class="text-2xl font-bold text-gray-800">Beta Pack - Admin Panel</h1>
 
       <div class="flex items-center gap-4">
         <span class="font-semibold text-gray-800">{{ authStore.user?.username }}</span>
@@ -59,8 +60,8 @@ onMounted(() => {
             v-for="v in views"
             :key="v.id"
             @click="setView(v.id)"
-            :class="activeView === v.id 
-              ? 'bg-gradient-to-r from-[#3555e4] to-[#64b5f6] text-white' 
+            :class="activeView === v.id
+              ? 'bg-gradient-to-r from-[#1976d2] to-[#42a5f5] text-white'
               : 'bg-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800'"
             class="w-full flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer mb-1"
           >
@@ -80,7 +81,7 @@ onMounted(() => {
           </button>
 
           <!-- Statistika -->
-          <div class="mt-8 bg-gradient-to-r from-[#3555e4] to-[#64b5f6] p-5 rounded-xl text-white">
+          <div class="mt-8 bg-gradient-to-r from-[#1976d2] to-[#42a5f5] p-5 rounded-xl text-white">
             <div class="flex justify-between mb-3">
               <span class="text-xs opacity-90">Ukupno proizvoda</span>
               <span class="text-2xl font-bold">{{ statsStore.products }}</span>
@@ -108,9 +109,13 @@ onMounted(() => {
           @update-count="statsStore.refresh"
         />
 
-        <ProductManager 
+        <ProductManager
           v-if="activeView === 'products'"
           @update-count="statsStore.refresh"
+        />
+
+        <OrdersManager
+          v-if="activeView === 'orders'"
         />
 
       </main>

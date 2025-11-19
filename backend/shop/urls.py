@@ -4,13 +4,19 @@ from .views import (
     current_user,
     CategoryViewSet,
     SubcategoryViewSet,
-    ProductViewSet
+    ProductViewSet,
+    ProductVariantViewSet,
+    ProductImageViewSet,
+    OrderViewSet
 )
 
 router = DefaultRouter()
 router.register('categories', CategoryViewSet, basename='category')
 router.register('subcategories', SubcategoryViewSet, basename='subcategory')
 router.register('products', ProductViewSet, basename='product')
+router.register('product-variants', ProductVariantViewSet, basename='product-variant')
+router.register('product-images', ProductImageViewSet, basename='product-image')
+router.register('orders', OrderViewSet, basename='order')
 
 urlpatterns = [
     path('auth/user/', current_user, name='current_user'),

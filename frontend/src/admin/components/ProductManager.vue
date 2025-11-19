@@ -4,7 +4,28 @@ import { useProductStore } from '@/admin/store/products'
 import { useCategoryStore } from '@/admin/store/categories'
 import { useSubcategoryStore } from '@/admin/store/subcategories'
 import ProductDetailModal from './ProductDetailModal.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
+const showConfirm = ref(false)
+const confirmMessage = ref("")
+const confirmAction = ref(null)
+
+const openConfirm = (msg, action) => {
+  confirmMessage.value = msg
+  confirmAction.value = action
+  showConfirm.value = true
+}
+
+const closeConfirm = () => {
+  showConfirm.value = false
+  confirmMessage.value = ""
+  confirmAction.value = null
+}
+
+const doConfirm = () => {
+  if (confirmAction.value) confirmAction.value()
+  closeConfirm()
+}
 const emit = defineEmits(['update-count'])
 
 const productStore = useProductStore()
@@ -139,11 +160,21 @@ const saveProduct = async () => {
 }
 
 // Delete
-const deleteProduct = async product => {
-  if (!confirm(`Obrisati proizvod "${product.name}"?`)) return
-  await productStore.remove(product.id)
-  emit('update-count')
+const deleteProduct = (product) => {
+  openConfirm(
+    `Da li želiš da obrišeš proizvod "${product.name}"?`,
+    async () => {
+      try {
+        await productStore.remove(product.id)
+        emit('update-count')
+      } catch (err) {
+        console.error(err)
+        openConfirm("Ne može da se obriše proizvod! Proizvod možda ima varijante ili slike.", null)
+      }
+    }
+  )
 }
+
 
 // Detail modal functions
 const openDetailModal = (product) => {
@@ -261,100 +292,145 @@ onMounted(async () => {
     </div>
 
     <!-- MODAL -->
-    <div
-      v-if="showModal"
-      @click.self="closeModal"
-      class="fixed inset-0 bg-black/50 flex justify-center items-center p-5 z-[1000]"
-    >
-      <div class="bg-white rounded-xl w-full max-w-[600px] shadow-xl overflow-y-auto max-h-[90vh]">
-        
-        <div class="p-6 border-b flex justify-between items-center">
-          <h3 class="text-xl font-semibold">
-            {{ isEditing ? "Izmeni proizvod" : "Novi proizvod" }}
-          </h3>
+    <!-- MODAL -->
+<div
+  v-if="showModal"
+  @click.self="closeModal"
+  class="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center p-5 z-[1200] animate-fade-in"
+>
+  <div
+    class="bg-white rounded-3xl w-full max-w-[750px] shadow-2xl overflow-y-auto max-h-[90vh] animate-slide-up"
+  >
 
-          <button @click="closeModal" class="text-3xl text-gray-500">&times;</button>
-        </div>
+    <!-- HEADER -->
+    <div class="px-10 py-7 bg-gradient-to-r from-blue-600 to-blue-500 flex justify-between items-center">
+      <h3 class="text-2xl font-semibold text-white">
+        {{ isEditing ? "Izmeni Proizvod" : "Novi Proizvod" }}
+      </h3>
 
-        <form @submit.prevent="saveProduct" class="p-6">
-          <!-- NAME -->
-          <label class="block font-medium mb-1">Naziv *</label>
-          <input v-model="form.name" required class="w-full px-3 py-2 border rounded" />
-
-          <!-- DESCRIPTION -->
-          <label class="block font-medium mt-5 mb-1">Opis *</label>
-          <textarea
-            v-model="form.description"
-            rows="4"
-            class="w-full px-3 py-2 border rounded resize-none"
-          ></textarea>
-
-          <!-- PRICE -->
-          <label class="block font-medium mt-5 mb-1">Cena (RSD) *</label>
-          <input v-model="form.price" type="number" required class="w-full px-3 py-2 border rounded" />
-
-          <!-- CATEGORY -->
-          <label class="block font-medium mt-5 mb-1">Kategorija *</label>
-          <select v-model="form.category" class="w-full px-3 py-2 border rounded" required>
-            <option value="">Izaberi kategoriju</option>
-            <option v-for="c in categoryStore.list" :value="c.id" :key="c.id">
-              {{ c.name }}
-            </option>
-          </select>
-
-          <!-- SUBCATEGORY -->
-          <label class="block font-medium mt-5 mb-1">Podkategorija</label>
-          <select v-model="form.subcategory" class="w-full px-3 py-2 border rounded">
-            <option value="">Bez podkategorije</option>
-            <option
-              v-for="s in filteredSubcategories"
-              :key="s.id"
-              :value="s.id"
-            >
-              {{ s.name }}
-            </option>
-          </select>
-
-          <!-- On sale -->
-          <label class="flex items-center mt-5 text-sm gap-2 cursor-pointer">
-            <input v-model="form.on_sale" type="checkbox" />
-            <span>Proizvod je na akciji</span>
-          </label>
-
-          <div v-if="form.on_sale">
-            <label class="block font-medium mt-5 mb-1">Akcijska cena *</label>
-            <input
-              v-model="form.sale_price"
-              type="number"
-              class="w-full px-3 py-2 border rounded"
-            />
-          </div>
-
-          <!-- ERROR -->
-          <p v-if="error" class="text-red-600 mt-3">{{ error }}</p>
-
-          <!-- BUTTONS -->
-          <div class="flex justify-end gap-3 mt-8">
-            <button
-              type="button"
-              @click="closeModal"
-              class="px-5 py-2 bg-gray-300 rounded"
-            >
-              Otkaži
-            </button>
-
-            <button
-              type="submit"
-              :disabled="saving"
-              class="px-5 py-2 bg-blue-600 text-white rounded disabled:opacity-60"
-            >
-              {{ saving ? "Čuvanje..." : "Sačuvaj" }}
-            </button>
-          </div>
-        </form>
-
-      </div>
+      <button
+        @click="closeModal"
+        class="text-white text-4xl leading-none hover:scale-125 transition cursor-pointer"
+      >
+        &times;
+      </button>
     </div>
+
+    <!-- FORM -->
+    <form @submit.prevent="saveProduct" class="px-10 py-8 space-y-6">
+
+      <!-- NAME -->
+      <div>
+        <label class="block mb-2 font-medium text-gray-800">Naziv *</label>
+        <input
+          v-model="form.name"
+          required
+          class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200 
+                 focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm"
+        />
+      </div>
+
+      <!-- DESCRIPTION -->
+      <div>
+        <label class="block mb-2 font-medium text-gray-800">Opis *</label>
+        <textarea
+          v-model="form.description"
+          rows="4"
+          class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200 
+                 focus:ring-2 focus:ring-blue-400 focus:outline-none transition resize-none shadow-sm"
+        ></textarea>
+      </div>
+
+      <!-- PRICE -->
+      <div>
+        <label class="block mb-2 font-medium text-gray-800">Cena (RSD) *</label>
+        <input
+          v-model="form.price"
+          type="number"
+          required
+          class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200
+                 focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm"
+        />
+      </div>
+
+      <!-- CATEGORY -->
+      <div>
+        <label class="block mb-2 font-medium text-gray-800">Kategorija *</label>
+        <select
+          v-model="form.category"
+          required
+          class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200
+                 focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm"
+        >
+          <option value="">Izaberi kategoriju</option>
+          <option v-for="c in categoryStore.list" :value="c.id" :key="c.id">
+            {{ c.name }}
+          </option>
+        </select>
+      </div>
+
+      <!-- SUBCATEGORY -->
+      <div>
+        <label class="block mb-2 font-medium text-gray-800">Podkategorija</label>
+        <select
+          v-model="form.subcategory"
+          class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200
+                 focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm"
+        >
+          <option value="">Bez podkategorije</option>
+          <option
+            v-for="s in filteredSubcategories"
+            :value="s.id"
+            :key="s.id"
+          >
+            {{ s.name }}
+          </option>
+        </select>
+      </div>
+
+      <!-- On sale -->
+      <label class="flex items-center gap-2 mt-2 cursor-pointer">
+        <input v-model="form.on_sale" type="checkbox" class="cursor-pointer" />
+        <span class="text-gray-800 font-medium">Proizvod je na akciji</span>
+      </label>
+
+      <div v-if="form.on_sale">
+        <label class="block font-medium mt-3 mb-1 text-gray-800">Akcijska cena *</label>
+        <input
+          v-model="form.sale_price"
+          type="number"
+          class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200
+                 focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm"
+        />
+      </div>
+
+      <!-- ERROR -->
+      <p v-if="error" class="text-red-600 font-semibold">{{ error }}</p>
+
+      <!-- BUTTONS -->
+      <div class="flex justify-end gap-4 pt-4">
+        <button
+          type="button"
+          @click="closeModal"
+          class="px-6 py-3 bg-gray-300 rounded-xl font-semibold hover:bg-gray-400 transition cursor-pointer"
+        >
+          Otkaži
+        </button>
+
+        <button
+          type="submit"
+          :disabled="saving"
+          class="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold shadow
+                 hover:bg-blue-700 transition cursor-pointer disabled:opacity-60"
+        >
+          {{ saving ? "Čuvanje..." : "Sačuvaj" }}
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
 
     <!-- Detail Modal za varijante/slike -->
     <ProductDetailModal
@@ -363,5 +439,34 @@ onMounted(async () => {
       @close="closeDetailModal"
       @updated="handleDetailUpdate"
     />
+    <ConfirmModal
+  :show="showConfirm"
+  :message="confirmMessage"
+  title="Potvrda"
+  confirmText="Obriši"
+  cancelText="Odustani"
+  @confirm="doConfirm"
+  @cancel="closeConfirm"
+/>
   </div>
 </template>
+<style>
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.25s ease-out;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0 }
+    to   { opacity: 1 }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(25px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
+</style>

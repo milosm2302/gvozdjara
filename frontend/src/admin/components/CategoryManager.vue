@@ -1,12 +1,35 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useCategoryStore } from '@/admin/store/categories'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const emit = defineEmits(['update-count'])
 
 const categoryStore = useCategoryStore()
 
-// Modal state
+// Confirm modal
+const showConfirm = ref(false)
+const confirmMessage = ref("")
+const confirmAction = ref(null)
+
+const openConfirm = (message, action) => {
+  confirmMessage.value = message
+  confirmAction.value = action
+  showConfirm.value = true
+}
+
+const closeConfirm = () => {
+  showConfirm.value = false
+  confirmMessage.value = ""
+  confirmAction.value = null
+}
+
+const doConfirm = () => {
+  if (confirmAction.value) confirmAction.value()
+  closeConfirm()
+}
+
+// Form modal
 const showModal = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
@@ -18,7 +41,6 @@ const form = ref({
   description: ''
 })
 
-// Modal kontrola
 const openAddModal = () => {
   isEditing.value = false
   form.value = { id: null, name: '', description: '' }
@@ -26,12 +48,12 @@ const openAddModal = () => {
   error.value = ''
 }
 
-const openEditModal = (category) => {
+const openEditModal = (cat) => {
   isEditing.value = true
   form.value = {
-    id: category.id,
-    name: category.name,
-    description: category.description || ''
+    id: cat.id,
+    name: cat.name,
+    description: cat.description || ''
   }
   showModal.value = true
   error.value = ''
@@ -43,7 +65,6 @@ const closeModal = () => {
   error.value = ''
 }
 
-// Save
 const saveCategory = async () => {
   saving.value = true
   error.value = ''
@@ -65,26 +86,26 @@ const saveCategory = async () => {
 
   } catch (err) {
     console.error(err)
-    error.value = 'Greška pri čuvanju kategorije'
+    error.value = 'Greška pri čuvanju kategorije.'
   } finally {
     saving.value = false
   }
 }
 
-// Delete
-const deleteCategory = async (category) => {
-  if (!confirm(`Da li želiš da obrišeš "${category.name}"?`)) return
-
-  try {
-    await categoryStore.remove(category.id)
-    emit('update-count')
-  } catch (err) {
-    console.error(err)
-    alert('Greška pri brisanju kategorije (možda ima proizvoda).')
-  }
+const deleteCategory = (cat) => {
+  openConfirm(
+    `Da li želiš da obrišeš "${cat.name}"?`,
+    async () => {
+      try {
+        await categoryStore.remove(cat.id)
+        emit('update-count')
+      } catch {
+        openConfirm("Ne može da se obriše kategorija jer ima proizvode!", null)
+      }
+    }
+  )
 }
 
-// Fetch on mount
 onMounted(() => {
   categoryStore.fetch()
   emit('update-count')
@@ -96,8 +117,12 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex justify-between items-center mb-8">
       <h2 class="text-2xl font-bold text-gray-800">Kategorije</h2>
-      <button @click="openAddModal"
-        class="px-6 py-3 bg-gradient-to-r from-[#3555e4] to-[#64b5f6] text-white rounded-md">
+
+      <button
+        @click="openAddModal"
+        class="px-6 py-3 bg-gradient-to-r from-[#3555e4] to-[#64b5f6]
+               text-white rounded-lg shadow hover:shadow-md active:scale-95 transition cursor-pointer"
+      >
         + Dodaj Kategoriju
       </button>
     </div>
@@ -107,29 +132,43 @@ onMounted(() => {
       Učitavanje...
     </div>
 
-    <!-- Lista -->
+    <!-- List -->
     <div v-else-if="categoryStore.list.length > 0" class="flex flex-col gap-5">
-      <div v-for="category in categoryStore.list" :key="category.id"
-        class="bg-white border border-gray-200 rounded-lg p-5 flex justify-between items-center">
-
+      <div
+        v-for="cat in categoryStore.list"
+        :key="cat.id"
+        class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm 
+               hover:shadow-lg transition flex justify-between items-center"
+      >
         <div class="flex-1">
-          <h3 class="text-xl font-semibold">{{ category.name }}</h3>
-          <p v-if="category.description" class="text-gray-600 text-sm">
-            {{ category.description }}
+          <h3 class="text-xl font-semibold">{{ cat.name }}</h3>
+
+          <p v-if="cat.description" class="text-gray-600 text-sm mt-1">
+            {{ cat.description }}
           </p>
-          <span class="inline-block px-3 py-1 bg-green-50 text-green-800 rounded-full text-xs font-semibold">
-            {{ category.product_count || 0 }} proizvoda
+
+          <span
+            class="inline-block mt-3 px-3 py-1 bg-green-50 text-green-700 rounded-full
+                   text-xs font-semibold"
+          >
+            {{ cat.product_count || 0 }} proizvoda
           </span>
         </div>
 
-        <div class="flex gap-2.5">
-          <button @click="openEditModal(category)"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md">
+        <div class="flex gap-3 cursor-pointer">
+          <button
+            @click="openEditModal(cat)"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700
+                   transition cursor-pointer"
+          >
             Izmeni
           </button>
 
-          <button @click="deleteCategory(category)"
-            class="px-4 py-2 bg-red-600 text-white rounded-md">
+          <button
+            @click="deleteCategory(cat)"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700
+                   transition cursor-pointer"
+          >
             Obriši
           </button>
         </div>
@@ -142,46 +181,108 @@ onMounted(() => {
     </div>
 
     <!-- Modal -->
-    <div v-if="showModal" @click.self="closeModal"
-      class="fixed inset-0 bg-black/50 flex justify-center items-center p-5">
-
-      <div class="bg-white rounded-xl w-full max-w-[500px] shadow-2xl">
-        <div class="flex justify-between items-center px-8 py-5 border-b">
-          <h3 class="text-xl font-semibold">
+    <div
+      v-if="showModal"
+      @click.self="closeModal"
+      class="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center p-4
+             z-[1000] animate-fade-in"
+    >
+      <div
+        class="bg-white rounded-3xl w-full max-w-[650px] shadow-2xl overflow-hidden 
+               animate-slide-up"
+      >
+        <!-- HEADER -->
+        <div class="px-10 py-7 bg-gradient-to-r from-blue-600 to-blue-500 flex justify-between items-center">
+          <h3 class="text-2xl font-semibold text-white">
             {{ isEditing ? 'Izmeni Kategoriju' : 'Nova Kategorija' }}
           </h3>
-          <button @click="closeModal" class="text-4xl text-gray-400 hover:text-gray-800">
+
+          <button
+            @click="closeModal"
+            class="text-white text-4xl leading-none hover:scale-125 transition cursor-pointer"
+          >
             &times;
           </button>
         </div>
 
-        <form @submit.prevent="saveCategory" class="p-8">
-          <div class="mb-5">
-            <label class="block mb-2">Naziv*</label>
-            <input v-model="form.name" required class="w-full px-3 py-3 border rounded-md" />
+        <!-- FORM -->
+        <form @submit.prevent="saveCategory" class="px-10 py-8 space-y-6">
+          <div>
+            <label class="block mb-2 font-medium text-gray-800">Naziv *</label>
+            <input
+              v-model="form.name"
+              required
+              class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200
+                     focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm"
+            />
           </div>
 
-          <div class="mb-5">
-            <label class="block mb-2">Opis</label>
-            <textarea v-model="form.description" rows="3" class="w-full px-3 py-3 border rounded-md"></textarea>
+          <div>
+            <label class="block mb-2 font-medium text-gray-800">Opis</label>
+            <textarea
+              v-model="form.description"
+              rows="3"
+              class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200
+                     focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm resize-none"
+            ></textarea>
           </div>
 
-          <p v-if="error" class="text-red-600 my-4">{{ error }}</p>
+          <p v-if="error" class="text-red-600 font-medium">{{ error }}</p>
 
-          <div class="flex justify-end gap-2.5">
-            <button type="button" @click="closeModal" class="px-6 py-3 bg-gray-500 text-white rounded-md">
+          <!-- BUTTONS -->
+          <div class="flex justify-end gap-4 pt-4">
+            <button
+              type="button"
+              @click="closeModal"
+              class="px-6 py-3 bg-gray-300 rounded-xl font-semibold hover:bg-gray-400
+                     transition cursor-pointer"
+            >
               Otkaži
             </button>
 
-            <button type="submit" :disabled="saving"
-              class="px-6 py-3 bg-gradient-to-r from-[#3555e4] to-[#64b5f6] text-white rounded-md">
+            <button
+              type="submit"
+              :disabled="saving"
+              class="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold shadow
+                     hover:bg-blue-700 transition cursor-pointer disabled:opacity-60"
+            >
               {{ saving ? 'Čuvanje...' : 'Sačuvaj' }}
             </button>
           </div>
         </form>
-
       </div>
-
     </div>
+
+    <!-- Confirm Modal -->
+    <ConfirmModal
+      :show="showConfirm"
+      :message="confirmMessage"
+      title="Potvrda"
+      confirmText="Obriši"
+      cancelText="Odustani"
+      @confirm="doConfirm"
+      @cancel="closeConfirm"
+    />
   </div>
 </template>
+
+<style>
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.25s ease-out;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0 }
+    to   { opacity: 1 }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(25px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}
+</style>

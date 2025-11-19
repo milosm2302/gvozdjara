@@ -2,11 +2,34 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCategoryStore } from '@/admin/store/categories'
 import { useSubcategoryStore } from '@/admin/store/subcategories'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 const emit = defineEmits(['update-count'])
 
 const categoryStore = useCategoryStore()
 const subcategoryStore = useSubcategoryStore()
+
+// Confirm modal
+const showConfirm = ref(false)
+const confirmMessage = ref("")
+const confirmAction = ref(null)
+
+const openConfirm = (msg, action) => {
+  confirmMessage.value = msg
+  confirmAction.value = action
+  showConfirm.value = true
+}
+
+const closeConfirm = () => {
+  showConfirm.value = false
+  confirmMessage.value = ""
+  confirmAction.value = null
+}
+
+const doConfirm = () => {
+  if (confirmAction.value) confirmAction.value()
+  closeConfirm()
+}
 
 // UI
 const showModal = ref(false)
@@ -23,14 +46,14 @@ const form = ref({
   description: ''
 })
 
-// Computed — subcategories list
+// Data
 const subcategories = computed(() => subcategoryStore.list)
 const categories = computed(() => categoryStore.list)
 
-// Modal — open add
+// Modal — Add
 const openAddModal = () => {
   if (categories.value.length === 0) {
-    alert("Prvo dodaj kategoriju!")
+    openConfirm("Prvo dodaj kategoriju!", null)
     return
   }
 
@@ -40,7 +63,7 @@ const openAddModal = () => {
   error.value = ''
 }
 
-// Modal — open edit
+// Modal — Edit
 const openEditModal = (sub) => {
   isEditing.value = true
   form.value = {
@@ -56,7 +79,6 @@ const openEditModal = (sub) => {
 // Close modal
 const closeModal = () => {
   showModal.value = false
-  form.value = { id: null, name: '', category: '', description: '' }
   error.value = ''
 }
 
@@ -80,7 +102,6 @@ const saveSubcategory = async () => {
 
     emit('update-count')
     closeModal()
-
   } catch (err) {
     console.error(err)
     error.value = 'Greška pri čuvanju. Proveri da li naziv već postoji.'
@@ -89,17 +110,23 @@ const saveSubcategory = async () => {
   }
 }
 
-// Delete subcategory
-const deleteSubcategory = async (sub) => {
-  if (!confirm(`Obrisati podkategoriju "${sub.name}"?`)) return
-
-  try {
-    await subcategoryStore.remove(sub.id)
-    emit('update-count')
-  } catch (err) {
-    console.error(err)
-    alert('Greška pri brisanju. Možda postoje proizvodi u ovoj podkategoriji.')
-  }
+// Delete — using ConfirmModal
+const deleteSubcategory = (sub) => {
+  openConfirm(
+    `Obrisati podkategoriju "${sub.name}"?`,
+    async () => {
+      try {
+        await subcategoryStore.remove(sub.id)
+        emit('update-count')
+      } catch (err) {
+        console.error(err)
+        openConfirm(
+          "Ne može da se obriše podkategorija! Moguće da postoje proizvodi u njoj.",
+          null
+        )
+      }
+    }
+  )
 }
 
 // Load data
@@ -113,7 +140,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <!-- HEADER -->
+    <!-- Header -->
     <div class="flex justify-between items-center mb-8">
       <h2 class="text-2xl font-bold">Podkategorije</h2>
 
@@ -125,24 +152,20 @@ onMounted(async () => {
       </button>
     </div>
 
-    <!-- LOADING -->
+    <!-- Loading -->
     <div v-if="loading" class="text-center py-10 text-gray-600 text-lg">
       Učitavanje...
     </div>
 
-    <!-- LIST -->
-    <div
-      v-else-if="subcategories.length > 0"
-      class="flex flex-col gap-5"
-    >
+    <!-- List -->
+    <div v-else-if="subcategories.length > 0" class="flex flex-col gap-5">
       <div
         v-for="sub in subcategories"
         :key="sub.id"
         class="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-lg transition flex justify-between items-center"
       >
         <div class="flex-1">
-          <h3 class="text-xl font-semibold mb-2">{{ sub.name }}</h3>
-
+          <h3 class="text-xl font-semibold">{{ sub.name }}</h3>
           <p class="inline-block px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">
             {{ sub.category_name }}
           </p>
@@ -170,95 +193,149 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- EMPTY -->
+    <!-- Empty -->
     <div v-else class="py-16 text-center text-gray-400">
-      <p v-if="categories.length === 0">
-        Prvo dodaj kategorije.
-      </p>
-      <p v-else>
-        Nema podkategorija. Dodaj prvu podkategoriju!
-      </p>
+      <p v-if="categories.length === 0">Prvo dodaj kategorije.</p>
+      <p v-else>Nema podkategorija. Dodaj prvu podkategoriju!</p>
     </div>
 
-    <!-- MODAL -->
-    <div
-      v-if="showModal"
-      @click.self="closeModal"
-      class="fixed inset-0 bg-black/50 flex justify-center items-center p-5 z-[1000]"
-    >
-      <div class="bg-white rounded-xl w-full max-w-[500px] shadow-2xl">
+    <!-- Modal -->
+   <!-- MODAL -->
+<!-- MODAL -->
+<div
+  v-if="showModal"
+  @click.self="closeModal"
+  class="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center p-4 z-[1000]
+         transition-opacity duration-300 animate-fadeIn"
+>
 
-        <div class="flex justify-between items-center p-6 border-b">
-          <h3 class="text-xl font-semibold">
-            {{ isEditing ? "Izmeni Podkategoriju" : "Nova Podkategorija" }}
-          </h3>
+  <div
+    class="bg-white rounded-3xl w-full max-w-[820px] shadow-[0_20px_60px_rgba(0,0,0,0.15)]
+           overflow-hidden animate-slideUp"
+  >
 
-          <button @click="closeModal" class="text-3xl text-gray-500 hover:text-gray-800">
-            &times;
-          </button>
-        </div>
+    <!-- HEADER -->
+    <div class="px-10 py-7 bg-gradient-to-r from-blue-600 to-blue-500 flex justify-between items-center">
+      <h3 class="text-2xl font-semibold text-white tracking-wide">
+        {{ isEditing ? "Izmeni Podkategoriju" : "Nova Podkategorija" }}
+      </h3>
 
-        <form @submit.prevent="saveSubcategory" class="p-6">
+      <button
+        @click="closeModal"
+        class="text-white text-4xl leading-none hover:scale-125 transition cursor-pointer"
+      >
+        &times;
+      </button>
+    </div>
 
-          <!-- CATEGORY -->
-          <label class="block mb-1 font-medium">Kategorija *</label>
-          <select
-            v-model="form.category"
-            required
-            class="w-full px-3 py-2 border rounded"
-          >
-            <option value="">Izaberi kategoriju</option>
+    <!-- FORM -->
+    <form @submit.prevent="saveSubcategory" class="px-10 py-8 space-y-7">
 
-            <option
-              v-for="cat in categories"
-              :key="cat.id"
-              :value="cat.id"
-            >
-              {{ cat.name }}
-            </option>
-          </select>
-
-          <!-- NAME -->
-          <label class="block mt-5 mb-1 font-medium">Naziv *</label>
-          <input
-            v-model="form.name"
-            required
-            class="w-full px-3 py-2 border rounded"
-          />
-
-          <!-- DESCRIPTION -->
-          <label class="block mt-5 mb-1 font-medium">Opis</label>
-          <textarea
-            v-model="form.description"
-            rows="3"
-            class="w-full px-3 py-2 border rounded resize-none"
-          ></textarea>
-
-          <!-- ERROR -->
-          <p v-if="error" class="text-red-600 mt-3">{{ error }}</p>
-
-          <!-- BUTTONS -->
-          <div class="flex justify-end gap-3 mt-8">
-            <button
-              type="button"
-              @click="closeModal"
-              class="px-5 py-2 bg-gray-300 rounded hover:bg-gray-400"
-            >
-              Otkaži
-            </button>
-
-            <button
-              type="submit"
-              :disabled="saving"
-              class="px-5 py-2 bg-blue-600 text-white rounded disabled:opacity-60"
-            >
-              {{ saving ? "Čuvanje..." : "Sačuvaj" }}
-            </button>
-          </div>
-
-        </form>
-
+      <!-- CATEGORY -->
+      <div>
+        <label class="block mb-2 font-medium text-gray-800">Kategorija *</label>
+        <select
+          v-model="form.category"
+          required
+          class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200
+                 focus:ring-2 focus:ring-blue-400 focus:outline-none transition cursor-pointer shadow-sm"
+        >
+          <option value="">Izaberi kategoriju</option>
+          <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+            {{ cat.name }}
+          </option>
+        </select>
       </div>
-    </div>
+
+      <!-- NAME -->
+      <div>
+        <label class="block mb-2 font-medium text-gray-800">Naziv *</label>
+        <input
+          v-model="form.name"
+          required
+          class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200
+                 focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm"
+        />
+      </div>
+
+      <!-- DESCRIPTION -->
+      <div>
+        <label class="block mb-2 font-medium text-gray-800">Opis</label>
+        <textarea
+          v-model="form.description"
+          rows="3"
+          class="w-full px-4 py-3 rounded-xl bg-gray-100 border border-gray-200
+                 focus:ring-2 focus:ring-blue-400 focus:outline-none transition shadow-sm resize-none"
+        ></textarea>
+      </div>
+
+      <!-- ERROR -->
+      <p v-if="error" class="text-red-600 font-medium">{{ error }}</p>
+
+      <!-- BUTTONS -->
+      <div class="flex justify-end gap-4 pt-6">
+        <button
+          type="button"
+          @click="closeModal"
+          class="px-7 py-3 rounded-xl bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold
+                 transition cursor-pointer"
+        >
+          Otkaži
+        </button>
+
+        <button
+          type="submit"
+          :disabled="saving"
+          class="px-7 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold
+                 transition cursor-pointer disabled:opacity-60"
+        >
+          {{ saving ? "Čuvanje..." : "Sačuvaj" }}
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+
+<!-- ANIMATIONS -->
+
+
+
+
+    <!-- Confirm Modal -->
+    <ConfirmModal
+      :show="showConfirm"
+      :message="confirmMessage"
+      title="Potvrda"
+      confirmText="Obriši"
+      cancelText="Odustani"
+      @confirm="doConfirm"
+      @cancel="closeConfirm"
+    />
   </div>
 </template>
+<style>
+@keyframes fadeIn {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(25px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.animate-slideUp {
+  animation: slideUp 0.28s ease-out;
+}
+</style>

@@ -55,6 +55,7 @@ export const useProductStore = defineStore('adminProducts', {
             )
 
             await this.fetch()
-        }
+        },
+
     }
 })

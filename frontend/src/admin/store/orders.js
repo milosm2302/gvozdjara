@@ -1,0 +1,62 @@
+import { defineStore } from 'pinia'
+import { api } from '@/services/api'
+import { useAuthStore } from '@/store/auth'
+
+export const useOrderStore = defineStore('orders', {
+    state: () => ({
+        list: [],
+        selected: null,
+        loading: false,
+        error: null
+    }),
+
+    actions: {
+        async fetchAll() {
+            this.loading = true
+            const auth = useAuthStore()
+
+            try {
+                const response = await api.get(
+                    'orders/',
+                    { headers: { Authorization: `Bearer ${auth.accessToken}` } }
+                )
+                this.list = response.data
+            } finally {
+                this.loading = false
+            }
+        },
+
+        selectOrder(order) {
+            this.selected = order
+        },
+
+        clearSelected() {
+            this.selected = null
+        },
+
+        async updateStatus(id, newStatus) {
+            const auth = useAuthStore()
+
+            try {
+                await api.post(
+                    `orders/${id}/update_status/`,
+                    { status: newStatus },
+                    {
+                        headers: { Authorization: `Bearer ${auth.accessToken}` }
+                    }
+                )
+
+                // refresh table
+                await this.fetchAll()
+
+                // update modal instantly
+                if (this.selected && this.selected.id === id) {
+                    this.selected.status = newStatus
+                }
+
+            } catch (e) {
+                console.error('Greška pri ažuriranju statusa:', e)
+            }
+        }
+    }
+})

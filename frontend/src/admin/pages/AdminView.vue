@@ -75,6 +75,8 @@ onMounted(() => {
               {{
                 v.id === 'categories' ? statsStore.categories :
                 v.id === 'subcategories' ? statsStore.subcategories :
+                v.id === 'orders' ? statsStore.orders :
+
                 statsStore.products
               }}
             </span>

@@ -5,6 +5,31 @@ import TheHeader from '@/components/TheHeader.vue'
 import TheFooter from '@/components/TheFooter.vue'
 import { useCartStore } from '@/store/cart'
 
+import { ref } from 'vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
+
+const showConfirm = ref(false)
+const confirmMessage = ref("")
+const confirmAction = ref(null)
+
+const openConfirm = (msg, action) => {
+  confirmMessage.value = msg
+  confirmAction.value = action
+  showConfirm.value = true
+}
+
+const closeConfirm = () => {
+  showConfirm.value = false
+  confirmMessage.value = ""
+  confirmAction.value = null
+}
+
+const confirm = () => {
+  if (confirmAction.value) confirmAction.value()
+  closeConfirm()
+}
+
+
 const router = useRouter()
 const cartStore = useCartStore()
 
@@ -26,16 +51,19 @@ const updateQuantity = (item, newQuantity) => {
 }
 
 const removeItem = (item) => {
-  if (confirm(`Ukloniti "${item.name}" iz korpe?`)) {
-    cartStore.remove(item.cartId || item.id)
-  }
+  openConfirm(
+    `Ukloniti "${item.name}" iz korpe?"`,
+    () => cartStore.remove(item.cartId || item.id)
+  )
 }
 
 const clearCart = () => {
-  if (confirm('Isprazniti korpu?')) {
-    cartStore.clear()
-  }
+  openConfirm(
+    "Da li želite da ispraznite korpu?",
+    () => cartStore.clear()
+  )
 }
+
 
 const goToCheckout = () => {
   router.push('/checkout')
@@ -205,7 +233,15 @@ const goToCheckout = () => {
           </div>
 
         </div>
-
+          <ConfirmModal
+            :show="showConfirm"
+            title="Potvrda"
+            :message="confirmMessage"
+            confirmText="Da"
+            cancelText="Odustani"
+            @confirm="confirm"
+            @cancel="closeConfirm"
+          />
       </div>
     </main>
 

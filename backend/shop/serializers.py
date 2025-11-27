@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Subcategory, Product, ProductVariant, ProductImage, Order, OrderItem
+from .models import Category, Subcategory, Product, ProductVariant, ProductImage, Order, OrderItem, ContactMessage
 
 
 class SubcategorySerializer(serializers.ModelSerializer):
@@ -214,3 +214,42 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             )
         
         return order
+
+
+class ContactMessageSerializer(serializers.ModelSerializer):
+    """
+    Serializer za kontakt poruke
+    """
+    class Meta:
+        model = ContactMessage
+        fields = ['id', 'name', 'email', 'phone', 'message', 'created_at']
+        read_only_fields = ['id', 'created_at']
+        extra_kwargs = {
+            'email': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'phone': {'required': False, 'allow_blank': True, 'allow_null': True},
+        }
+
+    def validate(self, data):
+        """
+        Proveri da je bar jedno od email ili phone popunjeno
+        Samo pri kreiranju, ne pri update-u
+        """
+        # Ako je partial update (PATCH), preskoči validaciju
+        if self.partial:
+            return data
+
+        # Ako je update (PUT), uzmi postojeće vrednosti iz instance
+        if self.instance:
+            email = data.get('email', self.instance.email)
+            phone = data.get('phone', self.instance.phone)
+        else:
+            # Novo kreiranje
+            email = data.get('email')
+            phone = data.get('phone')
+
+        if not email and not phone:
+            raise serializers.ValidationError(
+                'Morate navesti bar email ili telefon.'
+            )
+
+        return data

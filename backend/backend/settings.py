@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -155,10 +160,19 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # ili drugi SMTP server
+# Za testiranje - ispisuje email u terminal
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Za produkciju - koristi SMTP
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'your-email@gmail.com'  # TODO: prebaciti u env varijablu
-EMAIL_HOST_PASSWORD = 'your-password'  # TODO: prebaciti u env varijablu
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = 'Bravarska Radnja <noreply@gvozdjara.rs>'
+
+# Owner email addresses for order notifications
+OWNER_EMAILS = os.environ.get('OWNER_EMAILS', 'office@betapack.co.rs').split(',')
+
+# Contact form email recipient
+CONTACT_EMAIL_RECIPIENT = os.environ.get('CONTACT_EMAIL_RECIPIENT', 'office@betapack.co.rs')

@@ -187,8 +187,11 @@ class Order(models.Model):
     )
     customer_email = models.EmailField(blank=True, null=True, help_text="Opciono")
 
-    # Opciono: adresa dostave
-    delivery_address = models.TextField(blank=True, null=True)
+    # Adresa dostave (obavezno)
+    delivery_address = models.TextField(
+        default='',
+        help_text="Adresa dostave je obavezna"
+    )
 
     # Status i napomene
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -256,3 +259,40 @@ class OrderItem(models.Model):
         # Auto-calculate total_price
         self.total_price = self.unit_price * self.quantity
         super().save(*args, **kwargs)
+
+
+class ContactMessage(models.Model):
+    """
+    Kontakt poruke sa kontakt forme
+    """
+    name = models.CharField(max_length=200)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(
+        max_length=20,
+        validators=[phone_validator],
+        blank=True,
+        null=True
+    )
+    message = models.TextField()
+
+    # Status
+    is_read = models.BooleanField(default=False)
+    is_replied = models.BooleanField(default=False)
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Kontakt poruka'
+        verbose_name_plural = 'Kontakt poruke'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        super().clean()
+        # Bar jedno od njih mora biti popunjeno
+        if not self.email and not self.phone:
+            raise ValidationError('Morate navesti bar email ili telefon.')
+
+    def __str__(self):
+        return f"{self.name} - {self.created_at.strftime('%d.%m.%Y %H:%M')}"

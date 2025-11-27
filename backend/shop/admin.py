@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Category, Subcategory, Product, ProductVariant,
-    ProductImage, Order, OrderItem
+    ProductImage, Order, OrderItem, ContactMessage
 )
 
 
@@ -83,5 +83,28 @@ class OrderAdmin(admin.ModelAdmin):
         ('Timestamps', {
             'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ['name', 'phone', 'email', 'is_read', 'is_replied', 'created_at']
+    list_filter = ['is_read', 'is_replied', 'created_at']
+    search_fields = ['name', 'phone', 'email', 'message']
+    readonly_fields = ['created_at']
+
+    fieldsets = (
+        ('Informacije o pošiljaocu', {
+            'fields': ('name', 'phone', 'email')
+        }),
+        ('Poruka', {
+            'fields': ('message',)
+        }),
+        ('Status', {
+            'fields': ('is_read', 'is_replied')
+        }),
+        ('Datum', {
+            'fields': ('created_at',)
         }),
     )

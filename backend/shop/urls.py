@@ -8,7 +8,9 @@ from .views import (
     ProductViewSet,
     ProductVariantViewSet,
     ProductImageViewSet,
-    OrderViewSet
+    OrderViewSet,
+    ContactMessageViewSet,
+    contact_message
 )
 
 router = DefaultRouter()
@@ -18,9 +20,11 @@ router.register('products', ProductViewSet, basename='product')
 router.register('product-variants', ProductVariantViewSet, basename='product-variant')
 router.register('product-images', ProductImageViewSet, basename='product-image')
 router.register('orders', OrderViewSet, basename='order')
+router.register('contact-messages', ContactMessageViewSet, basename='contact-message')
 
 urlpatterns = [
     path('auth/user/', current_user, name='current_user'),
     path('orders/notifications/', views.order_notifications_stream, name='order-notifications'),
+    path('contact/', contact_message, name='contact-message'),
     path('', include(router.urls)),
 ]

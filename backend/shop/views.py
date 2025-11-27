@@ -9,12 +9,12 @@ from django.template.loader import render_to_string
 from django.db import models
 from .models import (
     Category, Subcategory, Product, ProductVariant,
-    ProductImage, Order, OrderItem
+    ProductImage, Order, OrderItem, ContactMessage
 )
 from .serializers import (
     CategorySerializer, SubcategorySerializer, ProductSerializer,
     ProductVariantSerializer, ProductImageSerializer,
-    OrderSerializer, OrderCreateSerializer
+    OrderSerializer, OrderCreateSerializer, ContactMessageSerializer
 )
 
 
@@ -171,11 +171,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             logger = logging.getLogger(__name__)
             logger.error(f"Error updating stock quantities: {str(e)}", exc_info=True)
 
-        # Email notifikacija je onemogućena za sada
-        # TODO: Omogućiti slanje email-a kada se konfiguriše email server
-        # self.send_order_notification(order)
-
-        # TODO: Pošalji SMS korisniku i vlasniku (implementirati kasnije)
+        # Pošalji email notifikaciju vlasniku
+        self.send_order_notification(order)
 
         return Response(
             OrderSerializer(order).data,
@@ -204,8 +201,13 @@ Stavke:
             if order.notes:
                 message += f"\nNapomena kupca: {order.notes}"
 
-            # Email za vlasnike
-            recipient_list = ['office@betapack.co.rs']  # TODO: prebaciti u settings
+            if order.delivery_address:
+                message += f"\nAdresa dostave: {order.delivery_address}"
+
+            message += f"\n\n---\nProveri admin panel za više detalja."
+
+            # Email za vlasnike iz settings
+            recipient_list = settings.OWNER_EMAILS
 
             send_mail(
                 subject,
@@ -306,3 +308,72 @@ def order_notifications_stream(request):
     response['Cache-Control'] = 'no-cache'
     response['X-Accel-Buffering'] = 'no'
     return response
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def contact_message(request):
+    """
+    Endpoint za prijem kontakt poruka
+    """
+    from .serializers import ContactMessageSerializer
+    from .models import ContactMessage
+
+    serializer = ContactMessageSerializer(data=request.data)
+
+    if serializer.is_valid():
+        # Sačuvaj poruku u bazu
+        contact_msg = serializer.save()
+
+        # Pokušaj da pošalješ email
+        try:
+            recipient_email = settings.CONTACT_EMAIL_RECIPIENT
+
+            # Sastavi email
+            subject = f'Nova kontakt poruka od {contact_msg.name}'
+
+            message = f"""
+Nova kontakt poruka sa sajta:
+
+Ime: {contact_msg.name}
+Email: {contact_msg.email or 'Nije naveden'}
+Telefon: {contact_msg.phone}
+
+Poruka:
+{contact_msg.message}
+
+---
+Datum: {contact_msg.created_at.strftime('%d.%m.%Y %H:%M')}
+            """
+
+            # Pošalji email
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient_email],
+                fail_silently=True,  # Ne prekidaj ako email ne uspe
+            )
+        except Exception as e:
+            # Loguj grešku ali ne prekidaj - poruka je već sačuvana
+            print(f"Email sending failed: {e}")
+
+        return Response({
+            'success': True,
+            'message': 'Poruka uspešno poslata!'
+        }, status=status.HTTP_201_CREATED)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ContactMessage ViewSet
+class ContactMessageViewSet(viewsets.ModelViewSet):
+    queryset = ContactMessage.objects.all()
+    serializer_class = ContactMessageSerializer
+
+    def get_permissions(self):
+        # Samo admini mogu videti poruke
+        if self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy']:
+            return [IsAdminUser()]
+        # CREATE je javno dostupan (korisnici kreiraju poruke)
+        return [permissions.AllowAny()]

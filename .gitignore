@@ -10,11 +10,31 @@ Pipfile.lock
 
 # Django
 *.sqlite3
+*.db
+db.sqlite3
 media/
+staticfiles/
+*.log
 
 # Node
 node_modules/
 dist/
+.vite/
+*.local
 
 # Env files
 .env
+.env.local
+.env.production
+.env.development
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

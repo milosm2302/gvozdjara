@@ -25,12 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-lx0b-_hu8p7l_%rwe18b0sz^7hvqg&r@l^fu-yi*dl$h@cw*3s'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-lx0b-_hu8p7l_%rwe18b0sz^7hvqg&r@l^fu-yi*dl$h@cw*3s')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -51,6 +51,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add whitenoise for static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -83,12 +84,25 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Check if we're using PostgreSQL (production) or SQLite (development)
+if os.environ.get('DATABASE_URL'):
+    # Production - PostgreSQL
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    # Development - SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -128,9 +142,27 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Whitenoise configuration for serving static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 # Media files (User uploads)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# For production, use Cloudinary for media files
+# Uncomment and configure when ready:
+# if not DEBUG:
+#     import cloudinary
+#     import cloudinary.uploader
+#     import cloudinary.api
+#
+#     cloudinary.config(
+#         cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+#         api_key=os.environ.get('CLOUDINARY_API_KEY'),
+#         api_secret=os.environ.get('CLOUDINARY_API_SECRET')
+#     )
+#
+#     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -152,24 +184,34 @@ SIMPLE_JWT = {
 }
 
 # CORS - dozvoli Vue app-u
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8080",
-    "http://localhost:5173",
-]
+if DEBUG:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:8080",
+        "http://localhost:5173",
+    ]
+else:
+    # Production - add your production domain
+    CORS_ALLOWED_ORIGINS = os.environ.get(
+        'CORS_ALLOWED_ORIGINS',
+        'https://yourdomain.com'
+    ).split(',')
 
 CORS_ALLOW_CREDENTIALS = True
 
 # Email Configuration
-# Za testiranje - ispisuje email u terminal
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-# Za produkciju - koristi SMTP
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+if DEBUG:
+    # Za testiranje - ispisuje email u terminal
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    # Za produkciju - koristi SMTP
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = 'Bravarska Radnja <noreply@gvozdjara.rs>'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Bravarska Radnja <noreply@gvozdjara.rs>')
 
 # Owner email addresses for order notifications
 OWNER_EMAILS = os.environ.get('OWNER_EMAILS', 'office@betapack.co.rs').split(',')
